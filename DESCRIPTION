@@ -1,0 +1,14 @@
+Package: CDSE2016
+Type: Package
+Title: Using R for High-Throughput (Genomic) Analysis
+Version: 0.0.1
+Authors@R: c(
+    person("Martin", "Morgan", role="cre",
+        email="martin.morgan@roswellpark.org"))
+Description: Vignettes and data to support a 1/2-day Computational and
+    Data-enables Science and Engineering Days workshop.
+Imports: BiocInstaller
+Suggests: BiocStyle, knitr, Rcpp, BiocParallel, GenomicAlignments,
+    GenomicFiles, RNAseqData.HNRNPC.bam.chr14
+License: Artistic-2.0
+VignetteBuilder: knitr

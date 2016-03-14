@@ -1,5 +1,8 @@
 # Using R for High-Throughput (Genomic) Analysis
 
+- CDSE Days: https://www.buffalo.edu/cdse/cdse-days/WorkshopVIII.html
+- Date: 29 March 2016, 9am
+
 _R_ is a very popular open-source statistical programming language,
 with lots of interesting features and challenging quirks. _R_ is used
 in many aspects of data analysis, by people ranging from students in
