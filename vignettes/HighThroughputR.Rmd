@@ -1,0 +1,554 @@
+---
+title: "R for High-Throuhhput (Genomic) Analysis"
+author: "Martin Morgan (martin.morgan@roswellpark.org)"
+date: "29 March 2016"
+package: "`r pkg_ver('BiocStyle')`"
+abstract: >
+  _R_ is a very popular open-source statistical programming language,
+  with lots of interesting features and challenging quirks. _R_ is
+  used in many aspects of data analysis, by people ranging from
+  students in small academic groups to professional engineers in the
+  largest social media companies. This tutorial takes us from the
+  basics of _R_ to advanced features that are particularly interesting
+  to scientists and engineers. We'll talk about 'atomic' vectors,
+  functional and vectorized computations, _R_'s unique class systems,
+  visualization, extending _R_ to process large data, and literate
+  programming. A lot of material for a couple of hours, but it'll be
+  fun.
+vignette: >
+  %\VignetteIndexEntry{R for High-Throuhhput (Genomic) Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+output: 
+  BiocStyle::html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(cache=TRUE, fig.width=6, fig.height=6)
+library(ggplot2)
+library(microbenchmark)
+library(Rcpp)
+```
+
+# Introduction: _R_ and _Bioconductor_
+
+Today
+
+- Using [RStudio][1] and Amazon Machine Instances
+- Quick tour, emphasizing technical rather than practical /
+  domain-specific aspects
+
+_R_
+
+- https://r-project.org
+- Statistical (domain-specific) programming language
+- Interpretted
+- Extensible _via_ user-contributed modules
+
+_Bioconductor_
+
+- https://bioconductor.org; https://support.bioconductor.org
+- Collection (> 1000) of _R_ packages for the analysis and
+  comprehension of high-throughput genomic data
+
+Basics of _R_
+
+- 'Atomic' vectors (raw, logical, character, integer, numeric, complex, list)
+
+    ```{r vectors}
+    1 + 2
+    rnorm(10)
+    x <- rnorm(1000)
+    y <- x + rnorm(1000, sd=.5)
+    plot(y ~ x)
+    ```
+
+    - Vector operations are efficient; no need for loops!
+    - In-memory data model, making scalability a challenge
+
+- More complicated data structures
+
+    ```{r data.frame}
+    ## data.frame: rectangular, homogeneous within but not between columns
+    df <- data.frame(X=x, Y=y)
+    head(df)
+
+    ## 'S3' class; complicated structure managed via API
+    fit <- lm(Y ~ X, df)
+    anova(fit)
+    plot(Y ~ X, df, asp=1)
+    abline(fit, lwd=2, col="cyan")
+    ```
+
+- Statistical concepts, e.g.,
+
+    - `NA`: missing values
+    - `factor()`: vector of finite levels, e.g., 'Male', 'Female',
+      'Hermaphrodite'
+    - `~`: Formula
+
+- Packages: Core and user contributed; usually domain-specific rather
+  than 'infrastructure'
+
+    ```{r packages}
+    library(ggplot2)    # part of the 'Hadleyverse'
+    ggplot(df, aes(x=X, y=Y)) + geom_point() + geom_smooth()
+    ```
+
+- Help
+
+    - `?rnorm`: man pages with technical details
+    - Vignettes: literate programming documents illustrating overall
+      use
+
+- Simple and advanced statistical analysis intrinsic to _R_:
+  descriptive statistics, simple and advanced linear models, machine
+  learning, ...
+
+    - `stats::kmeans()`: a basic implementation, in a core package
+    - `kernlab::kkmeans()`: a kernel-based implementation, in a
+      contributed package -- check out the vignette,
+      `vignette("kernlab")`
+
+
+# Literate Programming
+
+_R_-flavored markdown, .Rmd files
+
+- A great way to integrate analysis and presentation
+- Standard markdown
+- _R_ code chunks
+
+    <pre>
+    ```&#123;r&#125;
+    x <- rnorm(100)
+    ```
+    </pre>
+        
+- 'knit' from Rmd to md: replace _R_ code chunks with evaluated
+  equivalent, as markdown
+- Process from md to HTML, PDF, ...
+- Like this document!
+- [Cheat sheet][7]
+
+# Class systems
+
+- Very different from C++ / Java
+
+S3
+
+- Informal classes -- a `list()` with a class _attribute_ declaring
+  the list to be a member of a class hierarchy. Single inheritance.
+
+    ```{r S3-class}
+    me = structure(list(first="Martin", last="Morgan"),
+                   class="people")
+    ```
+
+- 'Generic' and associated 'methods'
+
+    ```{r S3-method}
+    print         # generic
+    print.people = function(x, ...)
+        cat("who:\n ", paste(x$first, x$last, "\n "))
+    me
+    ```
+
+- _R_ works on vectors, so model _columns_ rather than rows!
+
+    ```{r S3-vector}
+    team = function(name, first, last)
+        structure(list(name=name, first=first, last=last),
+                  class=c("team", "people"))
+
+    print.team = function(x) {
+        cat("team name:", x$name,
+            "\nteam size:", length(x$first),
+            "\n")
+        NextMethod()
+    }
+
+    bioc = team("Bioconductor Core Team",
+                c("Martin", "Valerie", "Dan", "Herve"),
+                c("Morgan", "Obenchain", "Tenenbaum", "Pages"))
+    bioc
+    ```
+
+S4
+
+- Formal class definition; introspection
+- Multiple inheritance, multiple dispatch
+- Much more complicated data structures possible
+
+    ```{r S4-definition}
+    .People = setClass("People",
+        slots=c(first="character", last="character"),
+        validity=function(object) {
+            tst = character()
+            if (length(object@first) != length(object@last))
+                tst = c(tst, "'first' and 'last' must have same length")
+            ## other validity checks...
+            if (length(tst)) tst else NULL
+        })
+
+    setMethod("show", "People", function(object) {
+        cat("who:\n ", paste(object@first, object@last, "\n "))
+    })
+
+    .Team = setClass("Team",
+        contains="People",
+        slots=c(name="character"))
+
+    Team = function(name, people) {
+        ## constructor, then generate class
+        members = strsplit(people, "[[:space:]]+")
+        .Team(name=name,
+              first=sapply(members, `[[`, 1),
+              last=sapply(members, `[[`, 2))
+    }
+
+    setMethod("show", "Team", function(object) {
+        cat("team name:", object@name,
+            "\nteam size:", length(object@first),
+            "\n")
+        callNextMethod()
+    })
+    ```
+
+    ```{r S4-use}
+    Team("Bioconductor Core Team",
+         c("Martin Morgan", "Valerie Obenchain", "Dan Tenenbaum",
+           "Herve Pages"))
+    ```
+
+Advanced: what about _R_ itself?
+
+- Implemented in C
+- All accessible to the advanced _R_ developer
+
+    ```{r Rinternals.n}
+    R.home("include/Rinternals.h")
+    ```
+
+- Vector types are `S-expressions` that wrap metadata around base types
+
+- Different types
+
+    ```
+    #define NILSXP	     0	  /* nil = NULL */
+    #define SYMSXP	     1	  /* symbols */
+    ...
+    #define CLOSXP	     3	  /* closures */
+    ...
+    #define LGLSXP	    10	  /* logical vectors */
+    #define INTSXP	    13	  /* integer vectors */
+    #define REALSXP	    14	  /* real variables */
+    #define CPLXSXP	    15	  /* complex variables */
+    ...
+    ```
+
+- Basic data structure
+
+    ```
+    struct sxpinfo_struct {
+        SEXPTYPE type      :  TYPE_BITS;
+        ...
+        unsigned int named :  2;  /* reference counter - 0, 1, >1
+        ...
+        unsigned int gcgen :  1;  /* old generation number */
+        ...
+    }; /*		    Tot: 32 */
+    
+    struct vecsxp_struct {
+        R_len_t	length;
+        R_len_t	truelength;
+    };
+
+    typedef struct VECTOR_SEXPREC {
+        SEXPREC_HEADER;
+        struct vecsxp_struct vecsxp;
+    } VECTOR_SEXPREC, *VECSEXP;
+    ```
+
+# Large Data
+
+## Basics
+
+Efficient _R_ code
+
+- _R_ is fast...
+
+    ```{r}
+    x <- runif(1000000)
+    system.time(log(x))
+    ```
+- ...but it's easy to fall off the wagon
+
+    ```{r}
+    library(microbenchmark)
+    f = function(n) {
+        y <- numeric()
+        for (i in seq_len(n))
+            y[i] = log(x[i])
+        y
+    }
+    microbenchmark(f(1000), f(10000), f(20000), times=10)
+    ```
+
+- Primary sins
+    - Iteration, instead of vectorization
+    - Row-wise data.frame operations instead of column-wise and matrix
+      operations
+    - 'Copy-and-append' (like above) rather than pre-allocated and fill
+      
+
+Algorithms
+
+- Naive algorithms are typically polynomial or worse
+- More sophisticated algorithms are N log N or similar
+- Example: overlap of 'query' ranges with 'subject' ranges
+    - Naive: nested `for` loops test all combinations
+    - Nuanced: overlaps between nested containment lists, implemented
+      in [IRanges][4]::`findOverlaps()`
+
+- [Case Study][3]
+
+## Scalability
+
+- Need to consider _R_'s memory and computational models
+- Solution:
+    - Chunk-wise (e.g., millions of rows per chunk) processing
+    - Manage memory use for in-memory model
+    - Enable vectorization for efficient computation
+    - Often requires re-implementation (or use of packages that
+      re-implement, e.g., [biglm][]) of algorithms
+
+## Parallel evaluation
+
+- _R_ is single-threaded (!)
+- Some aspects are easy to parallelize, e.g., parallel BLAS library
+  for linear algebra
+- Many _R_ programs have map-reduce-like semantics
+
+    ```{r}
+    FUN <- function(i) { Sys.sleep(1); i }
+    lapply(1:5, FUN)
+    system.time(lapply(1:5, FUN))
+    ```
+- Very easy to parallelize
+
+    ```{r}
+    library(parallel)
+    system.time({
+        mclapply(1:5, FUN, mc.cores=5)
+    })
+    ```
+
+Clusters & clouds
+
+- Packages such as [BatchJobs][] and [SparkR][] provide solutions
+- Difficult for domain experts (i.e., not software engineers) to use
+
+    - Docker and other containers
+    - Pre-configured AMI instances
+
+## 'Native' implementation
+
+[Rcpp][2]
+
+- C++ interface to _R_ data structures
+- Example: index of top N elements ([StackOverflow][5], [Rcpp Gallery][6])
+- _R_
+
+    ```{r top-n}
+    z <- rnorm(1e6)
+    top_n <- function(x, n)
+        tail(order(x), n)
+    system.time(top_n(z, 100))
+    ```
+
+- Rcpp: priority queue (file "top_i_pq.cpp")
+
+    ```
+    #include <Rcpp.h>
+    #include <queue>
+    
+    using namespace Rcpp;
+    using namespace std;
+    
+    // [[Rcpp::export]]
+    IntegerVector top_i_pq(NumericVector v, int n)
+    {
+        typedef pair<double, int> Elt;
+        priority_queue< Elt, vector<Elt>, greater<Elt> > pq;
+        vector<int> result;
+    
+        for (int i = 0; i != v.size(); ++i) {
+            if (pq.size() < n)
+                pq.push(Elt(v[i], i));
+            else {
+                Elt elt = Elt(v[i], i);
+                if (pq.top() < elt) {
+                    pq.pop();
+                    pq.push(elt);
+                }
+            }
+        }
+    
+        result.reserve(pq.size());
+        while (!pq.empty()) {
+            result.push_back(pq.top().second + 1);
+            pq.pop();
+        }
+    
+        return wrap(result);
+    }
+    ```
+
+- Compile (`sourceCpp()` is a party trick; instead build library and
+  load in _R_)
+
+    ```{r Rccp}
+    sourceCpp("top_i_pq.cpp")
+    top_i_pq
+    ```
+
+- Run
+
+    ```{r Rcpp-eval}
+    z <- rnorm(1e6)
+    res1 <- top_n(z, 100)
+    res2 <- top_i_pq(z, 100)
+    identical(res1, res2)
+    microbenchmark(top_n(z, 100), top_i_pq(z, 100), times=10)
+    ```
+
+# (Visualization)
+
+# Case Study: Cancer Genome Atlass Gene Expression
+
+Background
+
+- Very large federally funded initiative to gain insight into genetics
+  of many different cancers
+    - One part: levels of gene expression
+- Recall: genes --> transcribed to mRNA --> translated to protiens
+    - More mRNA implies higher gene expression
+- Approach: high-throughput sequencing
+    - Isolate mRNA
+    - Reverse transcribed to DNA
+    - Fragment, and sequence each fragment
+    - Align fragments to genome
+    - Count number of fragments overlapping each gene
+    - Higher count --> higher expression
+
+Upstream
+
+- Terabytes of short sequences, aligned to reference genome
+- Parallel processing (in or out of _R_) to reduce to simple matrix of
+  counts: genes x samples
+
+In _R_ / _Bioconductor_
+
+- Represent as a _SummarizedExperiment_
+  - S4 class
+  - Coordinates counts with row and column annotations, e.g., genomic
+    ranges of each gene
+
+- Exploratory analysis, e.g., clustering to ask whether there are
+  distinct groups, outliers, etc.
+
+- Assess each gene for differential expression
+  - Advanced statistical model
+  - Efficient implementation in C
+
+- Summarize results in vignettes and workflows created using literate
+  programming principles
+
+Making complicated configurations accessible
+
+- [Docker containers][8]
+- [Amazon Machine Instances][9]
+
+# _Bioconductor_ Job / Career Opportunity
+
+This position offers a challenging and creative opportunity for a
+talented and independent Web / Systems Administrator. The successful
+applicant will participate in many end-user-facing activities of the
+successful open-source Bioconductor project for the analysis and
+comprehension of high-throughput genomic data. Initial duties involve
+management of cloud-based computing resources, including our web site
+https://bioconductor.org and support facilities
+https://support.bioconductor.org. Responsibilities will grow to
+include day-to-day oversight of our software build system, as well as
+trouble-shooting and management of user-contributed packages. There
+are considerable opportunities for developing innovative modern,
+containerized (e.g., Docker, AMI), and cloud-based (commercial and
+in-house) solutions to enable use of our software, and to employ
+modern automation software to deploy and manage in-house computational
+resources. This person will work in our small team of on- and off-site
+team members. The size of our team means that the successful applicant
+will become an expert in these areas, relying on close collaboration
+with other team members for support. The successful applicant will of
+necessity become familiar with the R programming language and
+Bioconductor ecosystem, and should be comfortable with the challenges
+and opportunities that implies.
+
+Interested? Contact martin.morgan@roswellpark.org
+
+# Acknowledgements
+
+Bioconductor Core Team (Current and Recent)
+
+- Valerie Obenchain, Dan Tenenbaum, Herve Pages, Jim Java, Jim Hester,
+  Brian Long, Marc Carlson, Sonali Arora, Paul Shannon, Nate Hayden
+
+Technical and Scientific Advisory Boards
+
+- Robert Gentleman (23andMe), Vincent Carey (Brigham & Womens,
+  Harvard), Wolfgang Huber (EMBL/EBI), Raphael Irizzary (Dana Farber,
+  Harvard), Levi Waldron (CUNY), Aedin Culhane (Dana Farber), Michael
+  Lawrence (Genentech), Sean Davis (NIH)
+- Simon Urbanek (AT&T), Paul Flicek (EBI), Simon Tavare (Cancer Research UK)
+
+Funding
+
+- US NIH / NHGRI: U41HG004059
+- US NIH / NCI: U24CA180996
+- EC: Horizon 2020 / SOUND
+
+```{r nhgri, echo=FALSE, out.height=50, fig.align="left"}
+knitr::include_graphics("logo_nih-nhgri.png")
+```
+
+```{r itcr, echo=FALSE, out.height=50, fig.align="left"}
+knitr::include_graphics("ITCR.jpg")
+```
+
+```{r sound, echo=FALSE, out.height=50, fig.align="left"}
+knitr::include_graphics("sound_wordmark.svg")
+```
+
+```{r rpci, echo=FALSE, out.height=50, fig.align="left"}
+knitr::include_graphics("rpci-logo_1.png")
+```
+
+```{r fhcrc, echo=FALSE, out.height=50, fig.align="left"}
+knitr::include_graphics("fred_hutch_logo_40th.png")
+```
+
+```{r bioc, echo=FALSE, out.height=100, fig.align="left"}
+knitr::include_graphics("bioconductor_logo_rgb.jpg")
+```
+
+[1]: https://rstudio.org
+[2]: https://www.rccp.org
+[3]: http://stackoverflow.com/questions/36190439
+[4]: https://bioconductor.org/packages/IRanges
+[5]: http://stackoverflow.com/questions/14821859
+[6]: http://gallery.rcpp.org/articles/top-elements-from-vectors-using-priority-queue/
+[7]: https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+[biglm]: http://cran.r-project.org/package=biglm
+[BatchJobs]: http://cran.r-project.org/package=BatchJobs
+[SparkR]: https://spark.apache.org/docs/1.6.0/sparkr.html
+[8]: http://bioconductor.org/help/bioconductor-cloud-ami/
+[9]: http://bioconductor.org/help/docker/

@@ -8,7 +8,8 @@ Authors@R: c(
 Description: Vignettes and data to support a 1/2-day Computational and
     Data-enables Science and Engineering Days workshop.
 Imports: BiocInstaller
-Suggests: BiocStyle, knitr, Rcpp, BiocParallel, GenomicAlignments,
-    GenomicFiles, RNAseqData.HNRNPC.bam.chr14
+Suggests: ggplot2, kernlab, microbenchmark, Rcpp, BiocParallel,
+    SummarizedExperiment, GenomicFiles, RNAseqData.HNRNPC.bam.chr14,
+    BiocStyle, knitr
 License: Artistic-2.0
 VignetteBuilder: knitr
