@@ -2,6 +2,7 @@
 
 - CDSE Days: https://www.buffalo.edu/cdse/cdse-days/WorkshopVIII.html
 - Date: 29 March 2016, 9am
+- Bring: a laptop with wireless & modern browser
 
 _R_ is a very popular open-source statistical programming language,
 with lots of interesting features and challenging quirks. _R_ is used
