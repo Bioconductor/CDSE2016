@@ -3,6 +3,7 @@
 - CDSE Days: https://www.buffalo.edu/cdse/cdse-days/WorkshopVIII.html
 - Date: 29 March 2016, 9am
 - Bring: a laptop with wireless & modern browser
+- More: [vignette][2]
 
 _R_ is a very popular open-source statistical programming language,
 with lots of interesting features and challenging quirks. _R_ is used
@@ -27,3 +28,4 @@ biology. Dr. Morgan recently moved to Buffalo as an associate
 professor at Roswell Park Cancer Institute.
 
 [1]: https://bioconductor.org
+[2]: https://github.com/Bioconductor/CDSE2016/blob/master/vignettes/HighThroughputR.Rmd
