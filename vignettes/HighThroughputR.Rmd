@@ -465,6 +465,7 @@ Reduction
 
     ## experiment data (subset) -- aligned reads; 1 file per indivdiual
     library(RNAseqData.HNRNPC.bam.chr14)
+    library(Rsamtools)
     fls <- RNAseqData.HNRNPC.bam.chr14_BAMFILES
     bfl <- BamFileList(fls, yieldSize=1000000)
 
@@ -508,8 +509,9 @@ Analysis
   Efficient implementation in C.
 
     ```{r DESeq2}
-    ## specifiy experimental design
+    library(DESeq2)
     airway <- airway[rowSums(assay(airway)) > 0,]
+    ## specifiy experimental design
     dds <- DESeqDataSet(airway, ~ cell + dex)
 
     ## 'normalize' columns for techincal artifacts; fit negative

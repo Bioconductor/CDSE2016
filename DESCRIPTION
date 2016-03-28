@@ -1,7 +1,7 @@
 Package: CDSE2016
 Type: Package
 Title: Using R for High-Throughput (Genomic) Analysis
-Version: 0.0.2
+Version: 0.0.3
 Authors@R: c(
     person("Martin", "Morgan", role="cre",
         email="martin.morgan@roswellpark.org"))

@@ -9,6 +9,7 @@ SOURCES = $(shell ls *Rmd)
 	@KNITR_CACHE=FALSE && "$(R_HOME)"/bin/R --vanilla CMD Stangle $<
 
 all: INSTALL_PKG $(SOURCES:.Rmd=.html)
+	mv HighThroughputR.html ../index.html
 
 INSTALL_PKG:
 	"$(R_HOME)/bin/R" CMD INSTALL ..
