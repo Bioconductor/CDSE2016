@@ -2,7 +2,7 @@
 title: "R for High-Throuhhput (Genomic) Analysis"
 author: "Martin Morgan (martin.morgan@roswellpark.org)"
 date: "29 March 2016"
-package: "`r pkg_ver('BiocStyle')`"
+package: "`r pkg_ver('CDSE2016')`"
 vignette: >
   %\VignetteIndexEntry{R for High-Throuhhput (Genomic) Analysis}
   %\VignetteEngine{knitr::rmarkdown}
@@ -428,7 +428,7 @@ Clusters & clouds
 
 # (Visualization)
 
-# Case Study: Cancer Genome Atlass Gene Expression
+# Case Study: Cancer Genome Atlas Gene Expression
 
 Background
 

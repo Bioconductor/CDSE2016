@@ -1,0 +1,17 @@
+SOURCES = $(shell ls *Rmd)
+
+%.html: %.Rmd
+	@echo "KNITR_CACHE=TRUE Sweave $<"
+	@KNITR_CACHE=TRUE "$(R_HOME)"/bin/R --vanilla CMD Sweave $<
+
+%.R: %.Rmd
+	@echo "KNITR_CACHE=FALSE Stangle $<"
+	@KNITR_CACHE=FALSE && "$(R_HOME)"/bin/R --vanilla CMD Stangle $<
+
+all: INSTALL_PKG $(SOURCES:.Rmd=.html)
+
+INSTALL_PKG:
+	"$(R_HOME)/bin/R" CMD INSTALL ..
+
+clean:
+	rm -rf Rplots* *html *R *.md *_cache/ *_files/ figure/
