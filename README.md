@@ -28,4 +28,4 @@ biology. Dr. Morgan recently moved to Buffalo as an associate
 professor at Roswell Park Cancer Institute.
 
 [1]: https://bioconductor.org
-[2]: https://github.com/Bioconductor/CDSE2016/blob/master/vignettes/HighThroughputR.Rmd
+[2]: https://bioconductor.github.io/CDSE2016/
